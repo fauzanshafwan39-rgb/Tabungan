@@ -8,7 +8,6 @@
 </head>
 <body>
   <div id="app">
-    <!-- Navbar -->
     <nav class="navbar">
       <div class="nav-brand">💰 Tabunganku</div>
       <div class="nav-links">
@@ -18,9 +17,11 @@
         <button class="nav-btn" onclick="showPage('hutangpiutang')">Hutang/Piutang</button>
         <button class="nav-btn" onclick="showPage('laporan')">Laporan</button>
       </div>
+      <div class="nav-right">
+        <button class="btn-darkmode" onclick="toggleDark()" title="Toggle dark mode">🌙</button>
+        <button class="btn-backup" onclick="showBackup()" title="Backup & Restore">💾</button>
+      </div>
     </nav>
-
-    <!-- Pages -->
     <main class="main-content">
       <div id="page-dashboard" class="page active"></div>
       <div id="page-wadah" class="page"></div>
@@ -30,35 +31,18 @@
     </main>
   </div>
 
-  <!-- Bottom Nav (mobile only) -->
   <nav class="bottom-nav">
-    <button class="bottom-nav-btn active" onclick="showPage('dashboard')">
-      <span class="bn-icon">🏠</span>
-      <span class="bn-label">Dashboard</span>
-    </button>
-    <button class="bottom-nav-btn" onclick="showPage('wadah')">
-      <span class="bn-icon">👛</span>
-      <span class="bn-label">Wadah</span>
-    </button>
-    <button class="bottom-nav-btn" onclick="showPage('transaksi')">
-      <span class="bn-icon">💸</span>
-      <span class="bn-label">Transaksi</span>
-    </button>
-    <button class="bottom-nav-btn" onclick="showPage('hutangpiutang')">
-      <span class="bn-icon">🤝</span>
-      <span class="bn-label">Hutang</span>
-    </button>
-    <button class="bottom-nav-btn" onclick="showPage('laporan')">
-      <span class="bn-icon">📊</span>
-      <span class="bn-label">Laporan</span>
-    </button>
+    <button class="bottom-nav-btn active" onclick="showPage('dashboard')"><span class="bn-icon">🏠</span><span class="bn-label">Dashboard</span></button>
+    <button class="bottom-nav-btn" onclick="showPage('wadah')"><span class="bn-icon">👛</span><span class="bn-label">Wadah</span></button>
+    <button class="bottom-nav-btn" onclick="showPage('transaksi')"><span class="bn-icon">💸</span><span class="bn-label">Transaksi</span></button>
+    <button class="bottom-nav-btn" onclick="showPage('hutangpiutang')"><span class="bn-icon">🤝</span><span class="bn-label">Hutang</span></button>
+    <button class="bottom-nav-btn" onclick="showPage('laporan')"><span class="bn-icon">📊</span><span class="bn-label">Laporan</span></button>
   </nav>
 
-  <!-- Modal -->
   <div id="modal-overlay" class="modal-overlay hidden" onclick="closeModal()">
     <div class="modal" onclick="event.stopPropagation()">
       <div class="modal-header">
-        <h3 id="modal-title">Modal</h3>
+        <h3 id="modal-title"></h3>
         <button class="modal-close" onclick="closeModal()">✕</button>
       </div>
       <div id="modal-body" class="modal-body"></div>
