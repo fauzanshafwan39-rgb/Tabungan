@@ -81,7 +81,7 @@ function saldoWadah(wadahId) {
   state.transaksi.forEach(function(t){
     if(t.tipe==='masuk'&&t.wadahId===wadahId) total+=Number(t.jumlah);
     if(t.tipe==='keluar'&&t.wadahId===wadahId) total-=Number(t.jumlah);
-    if(t.tipe==='transfer'&&t.wadahId===wadahId) total-=Number(t.jumlah);
+    if(t.tipe==='transfer'&&t.wadahId===wadahId) total-=Number(t.jumlah)+(Number(t.biayaAdmin)||0);
     if(t.tipe==='transfer'&&t.wadahTujuanId===wadahId) total+=Number(t.jumlah);
   });
   state.hutangPiutang.forEach(function(h){
@@ -265,7 +265,7 @@ function renderTransaksi() {
     var amtColor=t.tipe==='masuk'?'var(--success)':'var(--danger)';
     return '<tr>'+
       '<td>'+badge+'</td>'+
-      '<td>'+(t.keterangan||'-')+(t.kategori?'<br><span class="kat-chip">'+t.kategori+'</span>':'')+'</td>'+
+      '<td>'+(t.keterangan||'-')+(t.kategori?'<br><span class="kat-chip">'+t.kategori+'</span>':'')+(t.tipe==='transfer'&&t.biayaAdmin?'<br><small style="color:var(--danger)">admin: '+formatRupiah(t.biayaAdmin)+'</small>':'')+'</td>'+
       '<td style="font-weight:700;color:'+amtColor+'">'+formatRupiah(t.jumlah)+'</td>'+
       '<td>'+wadahInfo+'</td>'+
       '<td>'+formatTanggal(t.tanggal)+'</td>'+
@@ -284,7 +284,7 @@ function renderTransaksi() {
       '<div class="m-card-left"><div class="m-card-icon" style="background:'+bgColor+'">'+icon+'</div></div>'+
       '<div class="m-card-body">'+
         '<div class="m-card-title">'+(t.keterangan||(isIn?'Pemasukan':isTr?'Transfer':'Pengeluaran'))+'</div>'+
-        '<div class="m-card-sub">'+wadahInfo+' · '+formatTanggal(t.tanggal)+(t.kategori?' · '+t.kategori:'')+'</div>'+
+        '<div class="m-card-sub">'+wadahInfo+' · '+formatTanggal(t.tanggal)+(t.kategori?' · '+t.kategori:'')+(t.tipe==='transfer'&&t.biayaAdmin?' · <span style="color:var(--danger)">admin '+formatRupiah(t.biayaAdmin)+'</span>':'')+'</div>'+
       '</div>'+
       '<div class="m-card-right">'+
         '<div style="font-weight:700;color:'+amtColor+'">'+(isIn?'+':isTr?'':'-')+formatRupiah(t.jumlah)+'</div>'+
@@ -316,7 +316,10 @@ function renderTransaksi() {
 
 function formTransaksi(tipe, t) {
   var isEdit=!!t;
-  var tujuanField=tipe==='transfer'?'<div class="form-group"><label>Ke Wadah</label><select id="t-wadah-tujuan">'+wadahOptions(t?t.wadahTujuanId:'')+'</select></div>':'';
+  var tujuanField=tipe==='transfer'
+    ? '<div class="form-group"><label>Ke Wadah</label><select id="t-wadah-tujuan">'+wadahOptions(t?t.wadahTujuanId:'')+'</select></div>'+
+      '<div class="form-group"><label>Biaya Admin (Rp) <small style="color:var(--text-muted);font-weight:400">— opsional, dipotong dari wadah asal</small></label><input type="number" id="t-admin" placeholder="0" min="0" value="'+(t&&t.biayaAdmin?t.biayaAdmin:'0')+'"/></div>'
+    : '';
   var katField=tipe!=='transfer'?'<div class="form-group"><label>Kategori</label><select id="t-kat"><option value="">-- Pilih Kategori --</option>'+katOptions(t?t.kategori:'')+'</select></div>':'';
   return '<div class="form-group"><label>Jumlah (Rp)</label><input type="number" id="t-jumlah" placeholder="0" min="0" value="'+(t?t.jumlah:'')+'"/></div>'+
     '<div class="form-group"><label>Keterangan</label><input id="t-ket" placeholder="Gaji, makan siang, dll..." value="'+(t?t.keterangan:'')+'"/></div>'+
@@ -342,6 +345,7 @@ function _getTransaksiValues(tipe) {
     wadahId: document.getElementById('t-wadah').value,
     tanggal: document.getElementById('t-tanggal').value,
     wadahTujuanId: tipe==='transfer'?document.getElementById('t-wadah-tujuan').value:null,
+    biayaAdmin: tipe==='transfer'?(parseFloat(document.getElementById('t-admin').value)||0):0,
     kategori: tipe!=='transfer'&&document.getElementById('t-kat')?document.getElementById('t-kat').value:'',
   };
 }
@@ -351,7 +355,7 @@ function simpanTransaksi(tipe) {
   if(!v.wadahId){ alert('Pilih wadah!'); return; }
   if(!v.tanggal){ alert('Tanggal wajib diisi!'); return; }
   if(tipe==='transfer'&&v.wadahId===v.wadahTujuanId){ alert('Wadah asal dan tujuan tidak boleh sama!'); return; }
-  state.transaksi.push({ id:uid(), tipe:tipe, jumlah:v.jumlah, keterangan:v.ket, wadahId:v.wadahId, wadahTujuanId:v.wadahTujuanId, tanggal:v.tanggal, bulan:ymFromDate(v.tanggal), kategori:v.kategori });
+  state.transaksi.push({ id:uid(), tipe:tipe, jumlah:v.jumlah, keterangan:v.ket, wadahId:v.wadahId, wadahTujuanId:v.wadahTujuanId, biayaAdmin:v.biayaAdmin, tanggal:v.tanggal, bulan:ymFromDate(v.tanggal), kategori:v.kategori });
   saveData(); closeModal(); renderTransaksi();
 }
 function updateTransaksi(id, tipe) {
@@ -360,7 +364,7 @@ function updateTransaksi(id, tipe) {
   if(!v.jumlah||v.jumlah<=0){ alert('Jumlah harus lebih dari 0!'); return; }
   if(!v.tanggal){ alert('Tanggal wajib diisi!'); return; }
   t.jumlah=v.jumlah; t.keterangan=v.ket; t.wadahId=v.wadahId; t.wadahTujuanId=v.wadahTujuanId;
-  t.tanggal=v.tanggal; t.bulan=ymFromDate(v.tanggal); t.kategori=v.kategori;
+  t.biayaAdmin=v.biayaAdmin; t.tanggal=v.tanggal; t.bulan=ymFromDate(v.tanggal); t.kategori=v.kategori;
   saveData(); closeModal(); renderTransaksi();
 }
 function hapusTransaksi(id) {
