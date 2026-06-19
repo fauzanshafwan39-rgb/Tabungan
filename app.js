@@ -29,8 +29,12 @@ function showPage(name) {
   currentPage = name;
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.bottom-nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
   document.querySelectorAll('.nav-btn').forEach(b => {
+    if (b.getAttribute('onclick') === "showPage('" + name + "')") b.classList.add('active');
+  });
+  document.querySelectorAll('.bottom-nav-btn').forEach(b => {
     if (b.getAttribute('onclick') === "showPage('" + name + "')") b.classList.add('active');
   });
   renderPage(name);
@@ -61,11 +65,27 @@ function currentYM() {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
 }
 
+function currentDate() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+function formatTanggal(tgl) {
+  if (!tgl) return '-';
+  const parts = tgl.split('-');
+  return parts[2] + '/' + parts[1] + '/' + parts[0];
+}
+
+function ymFromDate(tgl) {
+  if (!tgl) return currentYM();
+  return tgl.slice(0, 7);
+}
+
 function allMonths() {
   const set = new Set();
   set.add(currentYM());
-  state.transaksi.forEach(t => set.add(t.bulan));
-  state.hutangPiutang.forEach(h => set.add(h.bulan));
+  state.transaksi.forEach(t => set.add(t.tanggal ? ymFromDate(t.tanggal) : (t.bulan || currentYM())));
+  state.hutangPiutang.forEach(h => set.add(h.tanggal ? ymFromDate(h.tanggal) : (h.bulan || currentYM())));
   return Array.from(set).sort().reverse();
 }
 
@@ -240,8 +260,8 @@ var filterBulanTransaksi = currentYM();
 function renderTransaksi() {
   var months = allMonths();
   var filtered = state.transaksi
-    .filter(function(t) { return !filterBulanTransaksi || t.bulan === filterBulanTransaksi; })
-    .sort(function(a, b) { return b.id.localeCompare(a.id); });
+    .filter(function(t) { return !filterBulanTransaksi || ymFromDate(t.tanggal) === filterBulanTransaksi; })
+    .sort(function(a, b) { return (b.tanggal || '').localeCompare(a.tanggal || '') || b.id.localeCompare(a.id); });
 
   var monthOpts = months.map(function(m) {
     return '<option value="' + m + '"' + (m === filterBulanTransaksi ? ' selected' : '') + '>' + monthLabel(m) + '</option>';
@@ -262,7 +282,7 @@ function renderTransaksi() {
       '<td>' + (t.keterangan || '-') + '</td>' +
       '<td style="font-weight:700;color:' + amtColor + '">' + formatRupiah(t.jumlah) + '</td>' +
       '<td>' + wadahInfo + '</td>' +
-      '<td>' + monthLabel(t.bulan) + '</td>' +
+      '<td>' + formatTanggal(t.tanggal) + '</td>' +
       '<td><button class="btn btn-danger btn-sm" onclick="hapusTransaksi(\'' + t.id + '\')">🗑️</button></td>' +
     '</tr>';
   }).join('') : '<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">📭</div><p>Belum ada transaksi</p></div></td></tr>';
@@ -280,17 +300,13 @@ function renderTransaksi() {
       '</div>' +
     '</div>' +
     '<div class="card"><div class="table-wrap"><table>' +
-      '<thead><tr><th>Tipe</th><th>Keterangan</th><th>Jumlah</th><th>Wadah</th><th>Bulan</th><th>Aksi</th></tr></thead>' +
+      '<thead><tr><th>Tipe</th><th>Keterangan</th><th>Jumlah</th><th>Wadah</th><th>Tanggal</th><th>Aksi</th></tr></thead>' +
       '<tbody>' + rows + '</tbody>' +
     '</table></div></div>';
 }
 
 function tambahTransaksi(tipe) {
   var title = tipe === 'masuk' ? '+ Tambah Pemasukan' : tipe === 'keluar' ? '− Tambah Pengeluaran' : '↔ Transfer Antar Wadah';
-  var months = allMonths();
-  var monthOpts = months.map(function(m) {
-    return '<option value="' + m + '"' + (m === currentYM() ? ' selected' : '') + '>' + monthLabel(m) + '</option>';
-  }).join('');
   var tujuanField = tipe === 'transfer'
     ? '<div class="form-group"><label>Ke Wadah</label><select id="t-wadah-tujuan">' + wadahOptions() + '</select></div>'
     : '';
@@ -299,7 +315,7 @@ function tambahTransaksi(tipe) {
     '<div class="form-group"><label>Keterangan</label><input id="t-ket" placeholder="Gaji, makan siang, dll..."/></div>' +
     '<div class="form-group"><label>' + (tipe === 'transfer' ? 'Dari Wadah' : 'Wadah') + '</label><select id="t-wadah">' + wadahOptions() + '</select></div>' +
     tujuanField +
-    '<div class="form-group"><label>Bulan</label><select id="t-bulan">' + monthOpts + '</select></div>' +
+    '<div class="form-group"><label>Tanggal</label><input type="date" id="t-tanggal" value="' + currentDate() + '"/></div>' +
     '<div class="form-actions"><button class="btn btn-ghost" onclick="closeModal()">Batal</button><button class="btn btn-primary" onclick="simpanTransaksi(\'' + tipe + '\')">Simpan</button></div>'
   );
 }
@@ -308,12 +324,13 @@ function simpanTransaksi(tipe) {
   var jumlah = parseFloat(document.getElementById('t-jumlah').value);
   var ket = document.getElementById('t-ket').value.trim();
   var wadahId = document.getElementById('t-wadah').value;
-  var bulan = document.getElementById('t-bulan').value;
+  var tanggal = document.getElementById('t-tanggal').value;
   var wadahTujuanId = tipe === 'transfer' ? document.getElementById('t-wadah-tujuan').value : null;
   if (!jumlah || jumlah <= 0) { alert('Jumlah harus lebih dari 0!'); return; }
   if (!wadahId) { alert('Pilih wadah!'); return; }
+  if (!tanggal) { alert('Tanggal wajib diisi!'); return; }
   if (tipe === 'transfer' && wadahId === wadahTujuanId) { alert('Wadah asal dan tujuan tidak boleh sama!'); return; }
-  state.transaksi.push({ id: uid(), tipe: tipe, jumlah: jumlah, keterangan: ket, wadahId: wadahId, wadahTujuanId: wadahTujuanId, bulan: bulan });
+  state.transaksi.push({ id: uid(), tipe: tipe, jumlah: jumlah, keterangan: ket, wadahId: wadahId, wadahTujuanId: wadahTujuanId, tanggal: tanggal, bulan: ymFromDate(tanggal) });
   saveData(); closeModal(); renderTransaksi();
 }
 
@@ -329,8 +346,8 @@ var filterBulanHP = '';
 function renderHutangPiutang() {
   var months = allMonths();
   var filtered = state.hutangPiutang
-    .filter(function(h) { return !filterBulanHP || h.bulan === filterBulanHP; })
-    .sort(function(a, b) { return b.id.localeCompare(a.id); });
+    .filter(function(h) { return !filterBulanHP || ymFromDate(h.tanggal || h.bulan) === filterBulanHP; })
+    .sort(function(a, b) { return (b.tanggal || b.bulan || '').localeCompare(a.tanggal || a.bulan || '') || b.id.localeCompare(a.id); });
 
   var monthOpts = months.map(function(m) {
     return '<option value="' + m + '"' + (m === filterBulanHP ? ' selected' : '') + '>' + monthLabel(m) + '</option>';
@@ -350,7 +367,7 @@ function renderHutangPiutang() {
       '<td style="color:var(--success)">' + formatRupiah(dibayar) + '</td>' +
       '<td style="font-weight:700;color:' + (sisa > 0 ? 'var(--danger)' : 'var(--success)') + '">' + formatRupiah(sisa) + '</td>' +
       '<td>' + (w ? w.icon + ' ' + w.nama : '-') + '</td>' +
-      '<td>' + monthLabel(h.bulan) + '</td>' +
+      '<td>' + formatTanggal(h.tanggal || h.bulan) + '</td>' +
       '<td>' + statusBadge + '</td>' +
       '<td style="display:flex;gap:4px">' + bayarBtn + '<button class="btn btn-danger btn-sm" onclick="hapusHP(\'' + h.id + '\')">🗑️</button></td>' +
     '</tr>';
@@ -368,7 +385,7 @@ function renderHutangPiutang() {
       '</div>' +
     '</div>' +
     '<div class="card"><div class="table-wrap"><table>' +
-      '<thead><tr><th>Tipe</th><th>Nama</th><th>Jumlah</th><th>Dibayar</th><th>Sisa</th><th>Wadah</th><th>Bulan</th><th>Status</th><th>Aksi</th></tr></thead>' +
+      '<thead><tr><th>Tipe</th><th>Nama</th><th>Jumlah</th><th>Dibayar</th><th>Sisa</th><th>Wadah</th><th>Tanggal</th><th>Status</th><th>Aksi</th></tr></thead>' +
       '<tbody>' + rows + '</tbody>' +
     '</table></div></div>';
 }
@@ -376,17 +393,13 @@ function renderHutangPiutang() {
 function tambahHP(tipe) {
   var title = tipe === 'hutang' ? '🔴 Tambah Hutangku' : '🟢 Tambah Piutangku';
   var desc = tipe === 'hutang' ? 'Kamu pinjam dari orang → uang masuk ke wadah' : 'Kamu piutangin orang → uang keluar dari wadah';
-  var months = allMonths();
-  var monthOpts = months.map(function(m) {
-    return '<option value="' + m + '"' + (m === currentYM() ? ' selected' : '') + '>' + monthLabel(m) + '</option>';
-  }).join('');
   openModal(title,
     '<p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:12px">' + desc + '</p>' +
     '<div class="form-group"><label>Nama ' + (tipe === 'hutang' ? 'Yang Ngutangin' : 'Yang Dipiutangi') + '</label><input id="hp-nama" placeholder="Nama orang..."/></div>' +
     '<div class="form-group"><label>Jumlah (Rp)</label><input type="number" id="hp-jumlah" placeholder="0" min="0"/></div>' +
     '<div class="form-group"><label>Keterangan</label><input id="hp-ket" placeholder="Opsional..."/></div>' +
     '<div class="form-group"><label>Wadah</label><select id="hp-wadah">' + wadahOptions() + '</select></div>' +
-    '<div class="form-group"><label>Bulan</label><select id="hp-bulan">' + monthOpts + '</select></div>' +
+    '<div class="form-group"><label>Tanggal</label><input type="date" id="hp-tanggal" value="' + currentDate() + '"/></div>' +
     '<div class="form-actions"><button class="btn btn-ghost" onclick="closeModal()">Batal</button><button class="btn btn-primary" onclick="simpanHP(\'' + tipe + '\')">Simpan</button></div>'
   );
 }
@@ -396,10 +409,11 @@ function simpanHP(tipe) {
   var jumlah = parseFloat(document.getElementById('hp-jumlah').value);
   var ket = document.getElementById('hp-ket').value.trim();
   var wadahId = document.getElementById('hp-wadah').value;
-  var bulan = document.getElementById('hp-bulan').value;
+  var tanggal = document.getElementById('hp-tanggal').value;
   if (!nama) { alert('Nama wajib diisi!'); return; }
   if (!jumlah || jumlah <= 0) { alert('Jumlah harus lebih dari 0!'); return; }
-  state.hutangPiutang.push({ id: uid(), tipe: tipe, nama: nama, jumlah: jumlah, keterangan: ket, wadahId: wadahId, bulan: bulan, lunas: false, pelunasan: [] });
+  if (!tanggal) { alert('Tanggal wajib diisi!'); return; }
+  state.hutangPiutang.push({ id: uid(), tipe: tipe, nama: nama, jumlah: jumlah, keterangan: ket, wadahId: wadahId, tanggal: tanggal, bulan: ymFromDate(tanggal), lunas: false, pelunasan: [] });
   saveData(); closeModal(); renderHutangPiutang();
 }
 
@@ -412,6 +426,7 @@ function bayarHP(id) {
     '<p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:12px">Sisa: <b>' + formatRupiah(sisa) + '</b></p>' +
     '<div class="form-group"><label>Jumlah Dibayar (Rp)</label><input type="number" id="pay-jumlah" value="' + sisa + '" min="0"/></div>' +
     '<div class="form-group"><label>Wadah</label><select id="pay-wadah">' + wadahOptions(h.wadahId) + '</select></div>' +
+    '<div class="form-group"><label>Tanggal Bayar</label><input type="date" id="pay-tanggal" value="' + currentDate() + '"/></div>' +
     '<div class="form-actions"><button class="btn btn-ghost" onclick="closeModal()">Batal</button><button class="btn btn-warning" onclick="simpanBayar(\'' + id + '\')">Simpan</button></div>'
   );
 }
@@ -421,9 +436,10 @@ function simpanBayar(id) {
   if (!h) return;
   var jumlah = parseFloat(document.getElementById('pay-jumlah').value);
   var wadahId = document.getElementById('pay-wadah').value;
+  var tanggal = document.getElementById('pay-tanggal').value;
   if (!jumlah || jumlah <= 0) { alert('Jumlah harus lebih dari 0!'); return; }
   if (!h.pelunasan) h.pelunasan = [];
-  h.pelunasan.push({ id: uid(), jumlah: jumlah, wadahId: wadahId });
+  h.pelunasan.push({ id: uid(), jumlah: jumlah, wadahId: wadahId, tanggal: tanggal });
   var dibayar = h.pelunasan.reduce(function(s, p) { return s + Number(p.jumlah); }, 0);
   if (dibayar >= Number(h.jumlah)) h.lunas = true;
   saveData(); closeModal(); renderHutangPiutang();
@@ -442,10 +458,10 @@ function renderLaporan() {
   var months = allMonths();
   var ym = laporanBulan;
 
-  var masukList = state.transaksi.filter(function(t) { return t.tipe === 'masuk' && t.bulan === ym; });
-  var keluarList = state.transaksi.filter(function(t) { return t.tipe === 'keluar' && t.bulan === ym; });
-  var hutangBulan = state.hutangPiutang.filter(function(h) { return h.tipe === 'hutang' && h.bulan === ym; });
-  var piutangBulan = state.hutangPiutang.filter(function(h) { return h.tipe === 'piutang' && h.bulan === ym; });
+  var masukList = state.transaksi.filter(function(t) { return t.tipe === 'masuk' && ymFromDate(t.tanggal || t.bulan) === ym; });
+  var keluarList = state.transaksi.filter(function(t) { return t.tipe === 'keluar' && ymFromDate(t.tanggal || t.bulan) === ym; });
+  var hutangBulan = state.hutangPiutang.filter(function(h) { return h.tipe === 'hutang' && ymFromDate(h.tanggal || h.bulan) === ym; });
+  var piutangBulan = state.hutangPiutang.filter(function(h) { return h.tipe === 'piutang' && ymFromDate(h.tanggal || h.bulan) === ym; });
 
   var totalMasuk = masukList.reduce(function(s, t) { return s + Number(t.jumlah); }, 0);
   var totalKeluar = keluarList.reduce(function(s, t) { return s + Number(t.jumlah); }, 0);
@@ -454,19 +470,19 @@ function renderLaporan() {
   var selisih = totalMasuk - totalKeluar;
 
   function txRows(list) {
-    if (!list.length) return '<tr><td colspan="3" style="text-align:center;color:var(--text-muted);padding:16px">Tidak ada data</td></tr>';
-    return list.map(function(t) {
+    if (!list.length) return '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:16px">Tidak ada data</td></tr>';
+    return list.sort(function(a,b){ return (b.tanggal||'').localeCompare(a.tanggal||''); }).map(function(t) {
       var w = getWadahById(t.wadahId);
-      return '<tr><td>' + (t.keterangan || '-') + '</td><td>' + (w ? w.icon + ' ' + w.nama : '-') + '</td><td style="font-weight:600">' + formatRupiah(t.jumlah) + '</td></tr>';
+      return '<tr><td>' + formatTanggal(t.tanggal) + '</td><td>' + (t.keterangan || '-') + '</td><td>' + (w ? w.icon + ' ' + w.nama : '-') + '</td><td style="font-weight:600">' + formatRupiah(t.jumlah) + '</td></tr>';
     }).join('');
   }
 
   function hpRows(list) {
-    if (!list.length) return '<tr><td colspan="3" style="text-align:center;color:var(--text-muted);padding:16px">Tidak ada data</td></tr>';
+    if (!list.length) return '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:16px">Tidak ada data</td></tr>';
     return list.map(function(h) {
       var w = getWadahById(h.wadahId);
       var statusBadge = h.lunas ? '<span class="badge badge-gray">Lunas</span>' : '<span class="badge badge-yellow">Belum</span>';
-      return '<tr><td>' + h.nama + (h.keterangan ? ' <small style="color:var(--text-muted)">(' + h.keterangan + ')</small>' : '') + '</td><td>' + (w ? w.icon + ' ' + w.nama : '-') + '</td><td>' + formatRupiah(h.jumlah) + ' ' + statusBadge + '</td></tr>';
+      return '<tr><td>' + formatTanggal(h.tanggal) + '</td><td>' + h.nama + (h.keterangan ? ' <small style="color:var(--text-muted)">(' + h.keterangan + ')</small>' : '') + '</td><td>' + (w ? w.icon + ' ' + w.nama : '-') + '</td><td>' + formatRupiah(h.jumlah) + ' ' + statusBadge + '</td></tr>';
     }).join('');
   }
 
@@ -495,22 +511,22 @@ function renderLaporan() {
     '</div>' +
     '<div class="grid-2 summary-section">' +
       '<div class="card"><div class="section-title">📥 Pemasukan Bulan Ini</div>' +
-        '<div class="table-wrap"><table><thead><tr><th>Keterangan</th><th>Wadah</th><th>Jumlah</th></tr></thead><tbody>' + txRows(masukList) + '</tbody>' +
-        (masukList.length ? '<tfoot><tr style="font-weight:700;background:#f5f3ff"><td colspan="2">Total</td><td>' + formatRupiah(totalMasuk) + '</td></tr></tfoot>' : '') +
+        '<div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Keterangan</th><th>Wadah</th><th>Jumlah</th></tr></thead><tbody>' + txRows(masukList) + '</tbody>' +
+        (masukList.length ? '<tfoot><tr style="font-weight:700;background:#f5f3ff"><td colspan="3">Total</td><td>' + formatRupiah(totalMasuk) + '</td></tr></tfoot>' : '') +
       '</table></div></div>' +
       '<div class="card"><div class="section-title">📤 Pengeluaran Bulan Ini</div>' +
-        '<div class="table-wrap"><table><thead><tr><th>Keterangan</th><th>Wadah</th><th>Jumlah</th></tr></thead><tbody>' + txRows(keluarList) + '</tbody>' +
-        (keluarList.length ? '<tfoot><tr style="font-weight:700;background:#f5f3ff"><td colspan="2">Total</td><td>' + formatRupiah(totalKeluar) + '</td></tr></tfoot>' : '') +
+        '<div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Keterangan</th><th>Wadah</th><th>Jumlah</th></tr></thead><tbody>' + txRows(keluarList) + '</tbody>' +
+        (keluarList.length ? '<tfoot><tr style="font-weight:700;background:#f5f3ff"><td colspan="3">Total</td><td>' + formatRupiah(totalKeluar) + '</td></tr></tfoot>' : '') +
       '</table></div></div>' +
     '</div>' +
     '<div class="grid-2 summary-section">' +
       '<div class="card"><div class="section-title">🔴 Hutangku Bulan Ini</div>' +
-        '<div class="table-wrap"><table><thead><tr><th>Nama</th><th>Wadah</th><th>Jumlah</th></tr></thead><tbody>' + hpRows(hutangBulan) + '</tbody>' +
-        (hutangBulan.length ? '<tfoot><tr style="font-weight:700;background:#f5f3ff"><td colspan="2">Total</td><td>' + formatRupiah(totalHutang) + '</td></tr></tfoot>' : '') +
+        '<div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Nama</th><th>Wadah</th><th>Jumlah</th></tr></thead><tbody>' + hpRows(hutangBulan) + '</tbody>' +
+        (hutangBulan.length ? '<tfoot><tr style="font-weight:700;background:#f5f3ff"><td colspan="3">Total</td><td>' + formatRupiah(totalHutang) + '</td></tr></tfoot>' : '') +
       '</table></div></div>' +
       '<div class="card"><div class="section-title">🟢 Piutangku Bulan Ini</div>' +
-        '<div class="table-wrap"><table><thead><tr><th>Nama</th><th>Wadah</th><th>Jumlah</th></tr></thead><tbody>' + hpRows(piutangBulan) + '</tbody>' +
-        (piutangBulan.length ? '<tfoot><tr style="font-weight:700;background:#f5f3ff"><td colspan="2">Total</td><td>' + formatRupiah(totalPiutang) + '</td></tr></tfoot>' : '') +
+        '<div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Nama</th><th>Wadah</th><th>Jumlah</th></tr></thead><tbody>' + hpRows(piutangBulan) + '</tbody>' +
+        (piutangBulan.length ? '<tfoot><tr style="font-weight:700;background:#f5f3ff"><td colspan="3">Total</td><td>' + formatRupiah(totalPiutang) + '</td></tr></tfoot>' : '') +
       '</table></div></div>' +
     '</div>';
 }

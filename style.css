@@ -308,3 +308,93 @@ tr:hover td { background: var(--bg); }
   .main-content { padding: 16px 12px; }
   .form-row { grid-template-columns: 1fr; }
 }
+
+/* === BOTTOM NAV (mobile) === */
+.bottom-nav {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  /* Hide top navbar links on mobile */
+  .nav-links { display: none; }
+
+  /* Show bottom nav */
+  .bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--card);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
+    z-index: 100;
+    height: 62px;
+  }
+
+  .bottom-nav-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px 4px;
+    color: var(--text-muted);
+    transition: color 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .bottom-nav-btn.active {
+    color: var(--primary);
+  }
+
+  .bottom-nav-btn .bn-icon {
+    font-size: 1.3rem;
+    line-height: 1;
+  }
+
+  .bottom-nav-btn .bn-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+
+  /* Add padding so content not hidden behind bottom nav */
+  .main-content {
+    padding-bottom: 80px;
+  }
+
+  /* Mobile page header stack vertically */
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  /* Make cards more compact on mobile */
+  .card { padding: 14px; }
+  .card-value { font-size: 1.3rem; }
+
+  /* Modal full width on mobile */
+  .modal {
+    width: 100%;
+    max-width: 100%;
+    border-radius: var(--radius) var(--radius) 0 0;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+  }
+  .modal-overlay {
+    align-items: flex-end;
+  }
+
+  /* Tables scroll horizontally */
+  .table-wrap { -webkit-overflow-scrolling: touch; }
+  td, th { white-space: nowrap; }
+
+  /* Wadah grid 2 col on mobile */
+  .wadah-grid { grid-template-columns: repeat(2, 1fr); }
+}

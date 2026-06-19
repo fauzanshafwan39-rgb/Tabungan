@@ -30,6 +30,30 @@
     </main>
   </div>
 
+  <!-- Bottom Nav (mobile only) -->
+  <nav class="bottom-nav">
+    <button class="bottom-nav-btn active" onclick="showPage('dashboard')">
+      <span class="bn-icon">🏠</span>
+      <span class="bn-label">Dashboard</span>
+    </button>
+    <button class="bottom-nav-btn" onclick="showPage('wadah')">
+      <span class="bn-icon">👛</span>
+      <span class="bn-label">Wadah</span>
+    </button>
+    <button class="bottom-nav-btn" onclick="showPage('transaksi')">
+      <span class="bn-icon">💸</span>
+      <span class="bn-label">Transaksi</span>
+    </button>
+    <button class="bottom-nav-btn" onclick="showPage('hutangpiutang')">
+      <span class="bn-icon">🤝</span>
+      <span class="bn-label">Hutang</span>
+    </button>
+    <button class="bottom-nav-btn" onclick="showPage('laporan')">
+      <span class="bn-icon">📊</span>
+      <span class="bn-label">Laporan</span>
+    </button>
+  </nav>
+
   <!-- Modal -->
   <div id="modal-overlay" class="modal-overlay hidden" onclick="closeModal()">
     <div class="modal" onclick="event.stopPropagation()">
