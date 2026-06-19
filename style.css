@@ -309,6 +309,34 @@ tr:hover td { background: var(--bg); }
   .form-row { grid-template-columns: 1fr; }
 }
 
+/* === MOBILE CARD LIST === */
+.m-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  margin-bottom: 8px;
+  box-shadow: var(--shadow);
+}
+.m-card-icon {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem; flex-shrink: 0;
+}
+.m-card-left { flex-shrink: 0; }
+.m-card-body { flex: 1; min-width: 0; }
+.m-card-title { font-weight: 600; font-size: 0.875rem; }
+.m-card-sub { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+.m-card-right { flex-shrink: 0; text-align: right; font-size: 0.875rem; }
+
+/* desktop-only / mobile-only */
+.desktop-only { display: block; }
+.mobile-only { display: none; }
+
 /* === BOTTOM NAV (mobile) === */
 .bottom-nav {
   display: none;
@@ -329,6 +357,10 @@ tr:hover td { background: var(--bg); }
     z-index: 100;
     height: 62px;
   }
+
+  /* Switch desktop/mobile visibility */
+  .desktop-only { display: none !important; }
+  .mobile-only { display: block !important; }
 
   .bottom-nav-btn {
     flex: 1;

@@ -267,6 +267,7 @@ function renderTransaksi() {
     return '<option value="' + m + '"' + (m === filterBulanTransaksi ? ' selected' : '') + '>' + monthLabel(m) + '</option>';
   }).join('');
 
+  // Desktop: table rows
   var rows = filtered.length ? filtered.map(function(t) {
     var w = getWadahById(t.wadahId);
     var wT = getWadahById(t.wadahTujuanId);
@@ -287,11 +288,36 @@ function renderTransaksi() {
     '</tr>';
   }).join('') : '<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">📭</div><p>Belum ada transaksi</p></div></td></tr>';
 
+  // Mobile: card list
+  var cards = filtered.length ? filtered.map(function(t) {
+    var w = getWadahById(t.wadahId);
+    var wT = getWadahById(t.wadahTujuanId);
+    var isIn = t.tipe === 'masuk';
+    var isTransfer = t.tipe === 'transfer';
+    var amtColor = isIn ? 'var(--success)' : 'var(--danger)';
+    var icon = isIn ? '⬆️' : isTransfer ? '↔️' : '⬇️';
+    var bgColor = isIn ? '#dcfce7' : isTransfer ? '#dbeafe' : '#fee2e2';
+    var wadahInfo = isTransfer
+      ? (w ? w.icon + ' ' + w.nama : '?') + ' → ' + (wT ? wT.icon + ' ' + wT.nama : '?')
+      : (w ? w.icon + ' ' + w.nama : '?');
+    return '<div class="m-card">' +
+      '<div class="m-card-left"><div class="m-card-icon" style="background:' + bgColor + '">' + icon + '</div></div>' +
+      '<div class="m-card-body">' +
+        '<div class="m-card-title">' + (t.keterangan || (isIn ? 'Pemasukan' : isTransfer ? 'Transfer' : 'Pengeluaran')) + '</div>' +
+        '<div class="m-card-sub">' + wadahInfo + ' · ' + formatTanggal(t.tanggal) + '</div>' +
+      '</div>' +
+      '<div class="m-card-right">' +
+        '<div style="font-weight:700;color:' + amtColor + '">' + (isIn ? '+' : isTransfer ? '' : '-') + formatRupiah(t.jumlah) + '</div>' +
+        '<button class="btn btn-danger btn-sm" style="margin-top:4px" onclick="hapusTransaksi(\'' + t.id + '\')">🗑️</button>' +
+      '</div>' +
+    '</div>';
+  }).join('') : '<div class="empty-state"><div class="empty-icon">📭</div><p>Belum ada transaksi</p></div>';
+
   document.getElementById('page-transaksi').innerHTML =
     '<div class="page-header">' +
       '<div><h2>Transaksi</h2><p>Pemasukan, pengeluaran & transfer</p></div>' +
       '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
-        '<select class="month-selector" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:0.875rem" onchange="filterBulanTransaksi=this.value;renderTransaksi()">' +
+        '<select style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:0.875rem" onchange="filterBulanTransaksi=this.value;renderTransaksi()">' +
           '<option value="">Semua Bulan</option>' + monthOpts +
         '</select>' +
         '<button class="btn btn-success" onclick="tambahTransaksi(\'masuk\')">+ Pemasukan</button>' +
@@ -299,10 +325,13 @@ function renderTransaksi() {
         '<button class="btn btn-primary" onclick="tambahTransaksi(\'transfer\')">↔ Transfer</button>' +
       '</div>' +
     '</div>' +
-    '<div class="card"><div class="table-wrap"><table>' +
+    // Desktop table
+    '<div class="card desktop-only"><div class="table-wrap"><table>' +
       '<thead><tr><th>Tipe</th><th>Keterangan</th><th>Jumlah</th><th>Wadah</th><th>Tanggal</th><th>Aksi</th></tr></thead>' +
       '<tbody>' + rows + '</tbody>' +
-    '</table></div></div>';
+    '</table></div></div>' +
+    // Mobile cards
+    '<div class="mobile-only">' + cards + '</div>';
 }
 
 function tambahTransaksi(tipe) {
@@ -353,6 +382,7 @@ function renderHutangPiutang() {
     return '<option value="' + m + '"' + (m === filterBulanHP ? ' selected' : '') + '>' + monthLabel(m) + '</option>';
   }).join('');
 
+  // Desktop: table rows
   var rows = filtered.length ? filtered.map(function(h) {
     var w = getWadahById(h.wadahId);
     var dibayar = (h.pelunasan || []).reduce(function(s, p) { return s + Number(p.jumlah); }, 0);
@@ -371,7 +401,30 @@ function renderHutangPiutang() {
       '<td>' + statusBadge + '</td>' +
       '<td style="display:flex;gap:4px">' + bayarBtn + '<button class="btn btn-danger btn-sm" onclick="hapusHP(\'' + h.id + '\')">🗑️</button></td>' +
     '</tr>';
-  }).join('') : '<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">🤝</div><p>Belum ada catatan hutang/piutang</p></div></td></tr>';
+  }).join('') : '<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">🤝</div><p>Belum ada catatan</p></div></td></tr>';
+
+  // Mobile: card list
+  var cards = filtered.length ? filtered.map(function(h) {
+    var w = getWadahById(h.wadahId);
+    var dibayar = (h.pelunasan || []).reduce(function(s, p) { return s + Number(p.jumlah); }, 0);
+    var sisa = Number(h.jumlah) - dibayar;
+    var isHutang = h.tipe === 'hutang';
+    var statusBadge = h.lunas ? '<span class="badge badge-gray">Lunas</span>' : '<span class="badge badge-yellow">Belum Lunas</span>';
+    var bayarBtn = !h.lunas ? '<button class="btn btn-warning btn-sm" onclick="bayarHP(\'' + h.id + '\')">💸 Bayar</button>' : '';
+    return '<div class="m-card">' +
+      '<div class="m-card-left"><div class="m-card-icon" style="background:' + (isHutang ? '#fee2e2' : '#dcfce7') + '">' + (isHutang ? '🔴' : '🟢') + '</div></div>' +
+      '<div class="m-card-body">' +
+        '<div class="m-card-title"><b>' + h.nama + '</b> ' + statusBadge + '</div>' +
+        '<div class="m-card-sub">' + (w ? w.icon + ' ' + w.nama : '') + ' · ' + formatTanggal(h.tanggal) + '</div>' +
+        '<div style="margin-top:4px;font-size:0.78rem">' +
+          '<span style="color:var(--text-muted)">Total: </span><b>' + formatRupiah(h.jumlah) + '</b> &nbsp;' +
+          '<span style="color:var(--success)">Dibayar: ' + formatRupiah(dibayar) + '</span> &nbsp;' +
+          '<span style="color:' + (sisa > 0 ? 'var(--danger)' : 'var(--success)') + '">Sisa: ' + formatRupiah(sisa) + '</span>' +
+        '</div>' +
+        '<div style="margin-top:8px;display:flex;gap:6px">' + bayarBtn + '<button class="btn btn-danger btn-sm" onclick="hapusHP(\'' + h.id + '\')">🗑️</button></div>' +
+      '</div>' +
+    '</div>';
+  }).join('') : '<div class="empty-state"><div class="empty-icon">🤝</div><p>Belum ada catatan hutang/piutang</p></div>';
 
   document.getElementById('page-hutangpiutang').innerHTML =
     '<div class="page-header">' +
@@ -384,10 +437,11 @@ function renderHutangPiutang() {
         '<button class="btn btn-success" onclick="tambahHP(\'piutang\')">🟢 Aku Piutangin</button>' +
       '</div>' +
     '</div>' +
-    '<div class="card"><div class="table-wrap"><table>' +
+    '<div class="card desktop-only"><div class="table-wrap"><table>' +
       '<thead><tr><th>Tipe</th><th>Nama</th><th>Jumlah</th><th>Dibayar</th><th>Sisa</th><th>Wadah</th><th>Tanggal</th><th>Status</th><th>Aksi</th></tr></thead>' +
       '<tbody>' + rows + '</tbody>' +
-    '</table></div></div>';
+    '</table></div></div>' +
+    '<div class="mobile-only">' + cards + '</div>';
 }
 
 function tambahHP(tipe) {
@@ -477,12 +531,46 @@ function renderLaporan() {
     }).join('');
   }
 
+  function txCards(list, isIncome) {
+    if (!list.length) return '<p style="color:var(--text-muted);font-size:0.875rem;padding:8px 0">Tidak ada data</p>';
+    return list.sort(function(a,b){ return (b.tanggal||'').localeCompare(a.tanggal||''); }).map(function(t) {
+      var w = getWadahById(t.wadahId);
+      var color = isIncome ? 'var(--success)' : 'var(--danger)';
+      var bg = isIncome ? '#dcfce7' : '#fee2e2';
+      var icon = isIncome ? '⬆️' : '⬇️';
+      return '<div class="m-card">' +
+        '<div class="m-card-left"><div class="m-card-icon" style="background:' + bg + '">' + icon + '</div></div>' +
+        '<div class="m-card-body">' +
+          '<div class="m-card-title">' + (t.keterangan || '-') + '</div>' +
+          '<div class="m-card-sub">' + (w ? w.icon + ' ' + w.nama : '-') + ' · ' + formatTanggal(t.tanggal) + '</div>' +
+        '</div>' +
+        '<div class="m-card-right" style="font-weight:700;color:' + color + '">' + formatRupiah(t.jumlah) + '</div>' +
+      '</div>';
+    }).join('');
+  }
+
   function hpRows(list) {
     if (!list.length) return '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:16px">Tidak ada data</td></tr>';
     return list.map(function(h) {
       var w = getWadahById(h.wadahId);
       var statusBadge = h.lunas ? '<span class="badge badge-gray">Lunas</span>' : '<span class="badge badge-yellow">Belum</span>';
       return '<tr><td>' + formatTanggal(h.tanggal) + '</td><td>' + h.nama + (h.keterangan ? ' <small style="color:var(--text-muted)">(' + h.keterangan + ')</small>' : '') + '</td><td>' + (w ? w.icon + ' ' + w.nama : '-') + '</td><td>' + formatRupiah(h.jumlah) + ' ' + statusBadge + '</td></tr>';
+    }).join('');
+  }
+
+  function hpCards(list, isHutang) {
+    if (!list.length) return '<p style="color:var(--text-muted);font-size:0.875rem;padding:8px 0">Tidak ada data</p>';
+    return list.map(function(h) {
+      var w = getWadahById(h.wadahId);
+      var statusBadge = h.lunas ? '<span class="badge badge-gray">Lunas</span>' : '<span class="badge badge-yellow">Belum</span>';
+      return '<div class="m-card">' +
+        '<div class="m-card-left"><div class="m-card-icon" style="background:' + (isHutang ? '#fee2e2' : '#dcfce7') + '">' + (isHutang ? '🔴' : '🟢') + '</div></div>' +
+        '<div class="m-card-body">' +
+          '<div class="m-card-title">' + h.nama + ' ' + statusBadge + '</div>' +
+          '<div class="m-card-sub">' + (w ? w.icon + ' ' + w.nama : '') + ' · ' + formatTanggal(h.tanggal) + '</div>' +
+        '</div>' +
+        '<div class="m-card-right" style="font-weight:700;color:' + (isHutang ? 'var(--danger)' : 'var(--success)') + '">' + formatRupiah(h.jumlah) + '</div>' +
+      '</div>';
     }).join('');
   }
 
@@ -511,23 +599,31 @@ function renderLaporan() {
     '</div>' +
     '<div class="grid-2 summary-section">' +
       '<div class="card"><div class="section-title">📥 Pemasukan Bulan Ini</div>' +
-        '<div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Keterangan</th><th>Wadah</th><th>Jumlah</th></tr></thead><tbody>' + txRows(masukList) + '</tbody>' +
+        '<div class="desktop-only table-wrap"><table><thead><tr><th>Tanggal</th><th>Keterangan</th><th>Wadah</th><th>Jumlah</th></tr></thead><tbody>' + txRows(masukList) + '</tbody>' +
         (masukList.length ? '<tfoot><tr style="font-weight:700;background:#f5f3ff"><td colspan="3">Total</td><td>' + formatRupiah(totalMasuk) + '</td></tr></tfoot>' : '') +
-      '</table></div></div>' +
+        '</table></div>' +
+        '<div class="mobile-only">' + txCards(masukList, true) + (masukList.length ? '<div style="border-top:2px solid var(--border);margin-top:8px;padding-top:8px;font-weight:700;display:flex;justify-content:space-between"><span>Total</span><span style="color:var(--success)">' + formatRupiah(totalMasuk) + '</span></div>' : '') + '</div>' +
+      '</div>' +
       '<div class="card"><div class="section-title">📤 Pengeluaran Bulan Ini</div>' +
-        '<div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Keterangan</th><th>Wadah</th><th>Jumlah</th></tr></thead><tbody>' + txRows(keluarList) + '</tbody>' +
+        '<div class="desktop-only table-wrap"><table><thead><tr><th>Tanggal</th><th>Keterangan</th><th>Wadah</th><th>Jumlah</th></tr></thead><tbody>' + txRows(keluarList) + '</tbody>' +
         (keluarList.length ? '<tfoot><tr style="font-weight:700;background:#f5f3ff"><td colspan="3">Total</td><td>' + formatRupiah(totalKeluar) + '</td></tr></tfoot>' : '') +
-      '</table></div></div>' +
+        '</table></div>' +
+        '<div class="mobile-only">' + txCards(keluarList, false) + (keluarList.length ? '<div style="border-top:2px solid var(--border);margin-top:8px;padding-top:8px;font-weight:700;display:flex;justify-content:space-between"><span>Total</span><span style="color:var(--danger)">' + formatRupiah(totalKeluar) + '</span></div>' : '') + '</div>' +
+      '</div>' +
     '</div>' +
     '<div class="grid-2 summary-section">' +
       '<div class="card"><div class="section-title">🔴 Hutangku Bulan Ini</div>' +
-        '<div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Nama</th><th>Wadah</th><th>Jumlah</th></tr></thead><tbody>' + hpRows(hutangBulan) + '</tbody>' +
+        '<div class="desktop-only table-wrap"><table><thead><tr><th>Tanggal</th><th>Nama</th><th>Wadah</th><th>Jumlah</th></tr></thead><tbody>' + hpRows(hutangBulan) + '</tbody>' +
         (hutangBulan.length ? '<tfoot><tr style="font-weight:700;background:#f5f3ff"><td colspan="3">Total</td><td>' + formatRupiah(totalHutang) + '</td></tr></tfoot>' : '') +
-      '</table></div></div>' +
+        '</table></div>' +
+        '<div class="mobile-only">' + hpCards(hutangBulan, true) + (hutangBulan.length ? '<div style="border-top:2px solid var(--border);margin-top:8px;padding-top:8px;font-weight:700;display:flex;justify-content:space-between"><span>Total</span><span style="color:var(--danger)">' + formatRupiah(totalHutang) + '</span></div>' : '') + '</div>' +
+      '</div>' +
       '<div class="card"><div class="section-title">🟢 Piutangku Bulan Ini</div>' +
-        '<div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Nama</th><th>Wadah</th><th>Jumlah</th></tr></thead><tbody>' + hpRows(piutangBulan) + '</tbody>' +
+        '<div class="desktop-only table-wrap"><table><thead><tr><th>Tanggal</th><th>Nama</th><th>Wadah</th><th>Jumlah</th></tr></thead><tbody>' + hpRows(piutangBulan) + '</tbody>' +
         (piutangBulan.length ? '<tfoot><tr style="font-weight:700;background:#f5f3ff"><td colspan="3">Total</td><td>' + formatRupiah(totalPiutang) + '</td></tr></tfoot>' : '') +
-      '</table></div></div>' +
+        '</table></div>' +
+        '<div class="mobile-only">' + hpCards(piutangBulan, false) + (piutangBulan.length ? '<div style="border-top:2px solid var(--border);margin-top:8px;padding-top:8px;font-weight:700;display:flex;justify-content:space-between"><span>Total</span><span style="color:var(--success)">' + formatRupiah(totalPiutang) + '</span></div>' : '') + '</div>' +
+      '</div>' +
     '</div>';
 }
 
